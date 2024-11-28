@@ -59,12 +59,15 @@ char * lz77(char * input, size_t input_size, int buffer_size) {
         output_idx ++;
         output[output_idx] = match_char;
         output_idx ++;
+        int buffer_shift = max_match_length != 0? max_match_length : 1;
 
-        lookahead_left ++;
-        lookahead_right ++;
+        lookahead_left += buffer_shift;
+        lookahead_right += buffer_shift;
+        search_right += buffer_shift;
         search_right ++;
-        if (search_right - search_left +1 > buffer_size/2) {
-            search_left++;
+        int search_buffer_excess = (search_right - search_left + 1 ) - (buffer_size/2);
+        if (search_buffer_excess >= 1) {
+            search_left += search_buffer_excess;
         }
     }
     output[output_idx] = ENCODING_END;
@@ -75,8 +78,8 @@ void print_triplets(char * input) {
     int idx = 0;
     while (input[idx] != ENCODING_END) {
         printf("printing triplet: \n");
-        printf("length:  %d\n", input[idx]);
-        printf("offset: %d\n", input[idx+1]);
+        printf("length:  %d\t", input[idx]);
+        printf("offset: %d\t", input[idx+1]);
         printf("char: %c\n", input[idx+2]);
         idx +=3;
     }
