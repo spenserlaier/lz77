@@ -1,98 +1,123 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-char ENCODING_END = -1;
+typedef struct {
+    int backwards_offset;
+    int length;
+    char character;
+} lz77_triplet;
+const int DEFAULT_BUFF_SIZE = 50;
 
+int max(int n1, int n2) {
+    return n1 > n2? n1 : n2;
+}
 
-char * lz77(char * input, size_t input_size, int buffer_size) {
-    char * output = malloc(3*input_size);
-    int search_left = 0;
-    int search_right = 0;
-    int lookahead_left = 0;
-    int lookahead_right = 0;
-    int output_idx = 0;
-    //triplet format: <offset, length, character>
-    while (lookahead_right < buffer_size/2) {
-        char curr = input[lookahead_right];
+typedef struct {
+    char * string;
+    int length;
+} lz77;
 
-        output[output_idx] = 0;
-        output_idx ++;
-        output[output_idx] = 0;
-        output_idx ++;
-        output[output_idx] = curr;
-        output_idx ++;
-
-        lookahead_right ++;
+lz77 * encode_lz77(char* input_string, int search_buff_size) {
+    unsigned long input_length = strlen(input_string);
+    if (input_length < 2*search_buff_size) {
+        return NULL;
     }
-    lookahead_left ++;
-    //printf("left: %d right: %d\n", lookahead_left, lookahead_right);
-    while (lookahead_right < input_size) {
-        char max_match_length = 0;
-        char match_offset = 0;
-        char match_char = input[lookahead_right];
-        //printf("lookahead left: %d lookahead right: %d\n", lookahead_left, lookahead_right);
-        //printf("search left: %d search right: %d\n", search_left, search_right);
+    char * output_string = malloc(sizeof(char) * input_length * 3);
+    int output_string_idx = 0;
+    int search_buff_left = 0;
+    int search_buff_right = search_buff_size - 1;
+    int look_ahead_buff_left = search_buff_right + 1;
+    int look_ahead_buff_right = look_ahead_buff_left;
 
-        for (int search_idx = search_left; 
-                search_idx <= search_right; 
-                search_idx ++) {
-            //iterate through search buffer looking for longest match against 
-            //lookahead buffer prefix
-            int match_length = 0;
-
-            while (search_idx + match_length <= search_right &&
-                    lookahead_left + match_length <= lookahead_right &&
-                    input[search_idx + match_length] == input[lookahead_left + match_length]){
-                match_length ++;
-                //TODO: make sure to skip buffers ahead by the length of the longest match
+    int longest_match_length = 0;
+    int longest_match_backwards_offset = 0;
+    //output first <window size> triplets as we initialize the search buffer.
+    // triplet structure: <backwards_offset, match_length, character>
+    for (int idx = 0; idx < search_buff_right; idx ++ ) {
+        output_string[output_string_idx++] = 0;
+        output_string[output_string_idx++] = 0;
+        output_string[output_string_idx++] = input_string[idx];
+    }
+    while (look_ahead_buff_right < input_length) {
+        //iterate through the  search buffer looking for the longest match starting
+        //at current character in lookahead buffer
+        for (int idx = search_buff_left; idx < search_buff_right; idx ++) {
+            int current_match_length = 0;
+            int match_idx_left = idx;
+            int match_idx_right = search_buff_right;
+            while (input_string[match_idx_left] == input_string[match_idx_right]
+                    && match_idx_left < search_buff_right)
+            {
+                match_idx_left ++;
+                match_idx_right ++;
+                current_match_length ++;
             }
-            if (match_length > max_match_length) {
-                max_match_length = match_length;
-                match_offset = lookahead_left - search_idx;
+            if  (current_match_length > longest_match_length) {
+                longest_match_length = current_match_length;
+                longest_match_backwards_offset = look_ahead_buff_left - idx;
             }
-
         }
+        // if we have a match, output a triplet and shift the buffers right by the size of the match
+        output_string[output_string_idx++] = longest_match_backwards_offset;
+        output_string[output_string_idx++] = longest_match_length;
+        output_string[output_string_idx++] = input_string[look_ahead_buff_left];
 
-        output[output_idx] = match_offset;
-        output_idx ++;
-        output[output_idx] = max_match_length;
-        output_idx ++;
-        output[output_idx] = match_char;
-        output_idx ++;
-        int buffer_shift = max_match_length != 0? max_match_length : 1;
-
-        lookahead_left += buffer_shift;
-        lookahead_right += buffer_shift;
-        search_right += buffer_shift;
-        search_right ++;
-        int search_buffer_excess = (search_right - search_left + 1 ) - (buffer_size/2);
-        if (search_buffer_excess >= 1) {
-            search_left += search_buffer_excess;
+        int skip_size = longest_match_length == 0? 1 : longest_match_length;
+        look_ahead_buff_left += skip_size;
+        search_buff_left += skip_size;
+        search_buff_right += skip_size;
+    }
+    //TODO: setting a char to 0 is equivalent to setting it to null terminator \0, which
+    //creates issues when searching for the end of a string
+    lz77 * output = malloc(sizeof(lz77));
+    output->length = output_string_idx;
+    output->string = output_string;
+    return output;
+}
+char * decode_lz77(lz77 * encoded_input) {
+    //scan through the match length values of the output and add them together
+    //to determine the decoded output. in cases where match length is 0, add 1
+    int decoded_size = 0;
+    int idx = 1; // position of first match_size value
+    while (idx < encoded_input->length) {
+        int match_size = encoded_input->string[idx] == 0? 1 : encoded_input->string[idx];
+        decoded_size += match_size;
+        idx += 3;
+    }
+    char * decoded = malloc(sizeof(char)*decoded_size);
+    int decoded_idx = 0;
+    for (int i = 0; i< encoded_input->length; i += 3) {
+        char backwards_offset = encoded_input->string[i];
+        char match_length = encoded_input->string[i+1];
+        char character = encoded_input->string[i+2];
+        if (match_length != 0) {
+            for (int j = i - backwards_offset; j < i + match_length; j ++ ) {
+                decoded[decoded_idx++] = decoded[j];
+            }
+        } else {
+            decoded[decoded_idx++] = character;
         }
     }
-    output[output_idx] = ENCODING_END;
+    return decoded;
+}
+int run_test(char * test_string) {
+    lz77 * encoded = encode_lz77(test_string, DEFAULT_BUFF_SIZE);
+    char * decoded = decode_lz77(encoded);
+    int cmp_result = strcmp(decoded, test_string);
+    return cmp_result;
+}
+char * generate_uniform_string(char character, int length) {
+    char * output = malloc(sizeof(char) * length);
+    for (int i = 0; i < length; i++ ) {
+        output[i] = character;
+    }
+    output[length-1] = '\0';
     return output;
 }
 
-void print_triplets(char * input) {
-    int idx = 0;
-    while (input[idx] != ENCODING_END) {
-        printf("printing triplet: \n");
-        printf("length:  %d\t", input[idx]);
-        printf("offset: %d\t", input[idx+1]);
-        printf("char: %c\n", input[idx+2]);
-        idx +=3;
-    }
-}
-
-
 int main() {
-    int test_input_size = 300;
-    char * test_input = malloc(test_input_size);
-    for (int i = 0; i < test_input_size; i++ ){
-        test_input[i] = 'a';
-    }
-    char * output = lz77(test_input, test_input_size, 50);
-    print_triplets(output);
+    char * uniform_a = generate_uniform_string('a', 500);
+    printf("Result of testing 500 uniform a's: %d", run_test(uniform_a));
     return 0;
 }
