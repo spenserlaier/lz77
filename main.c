@@ -66,12 +66,13 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
             }
         }
         // if we have a match, output a triplet and shift the buffers right by the size of the match
+        printf("longest match length found: %d\n", longest_match_length);
         output_string[output_string_idx++] = longest_match_backwards_offset;
         output_string[output_string_idx++] = longest_match_length;
         output_string[output_string_idx++] = input_string[look_ahead_buff_left];
 
-        //int skip_size = longest_match_length == 0? 1 : longest_match_length;
-        int skip_size = longest_match_length + 1;
+        int skip_size = longest_match_length == 0? 1 : longest_match_length;
+        //int skip_size = longest_match_length + 1;
         look_ahead_buff_left += skip_size;
         search_buff_left += skip_size;
         search_buff_right += skip_size;
