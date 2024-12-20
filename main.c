@@ -70,7 +70,8 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         output_string[output_string_idx++] = longest_match_length;
         output_string[output_string_idx++] = input_string[look_ahead_buff_left];
 
-        int skip_size = longest_match_length == 0? 1 : longest_match_length;
+        //int skip_size = longest_match_length == 0? 1 : longest_match_length;
+        int skip_size = longest_match_length + 1;
         look_ahead_buff_left += skip_size;
         search_buff_left += skip_size;
         search_buff_right += skip_size;
@@ -101,11 +102,18 @@ char * decode_lz77(lz77 * encoded_input) {
         char match_length = encoded_input->string[i+1];
         char character = encoded_input->string[i+2];
         if (match_length != 0) {
-            int backwards_index = decoded_idx - backwards_offset;
+            int backwards_index = decoded_idx - backwards_offset + 1;
             for (int j = backwards_index; j <  backwards_index + match_length; j ++ ) {
+                if (decoded[j] == '\0') {
+                    printf("trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
+                    printf("decoded index: %d, backwards index: %d initial backwards\n", decoded_idx, j);
+                }
                 decoded[decoded_idx++] = decoded[j];
             }
         } else {
+            if (character == '\0') {
+                printf("direct character assignment trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
+            }
             decoded[decoded_idx++] = character;
         }
     }
@@ -132,6 +140,7 @@ char * generate_uniform_string(char character, int length) {
 
 int main() {
     char * uniform_a = generate_uniform_string('a', 500);
+    printf("uniform string: %s\n",uniform_a );
     printf("Result of testing 500 uniform a's: %d\n", run_test(uniform_a));
     return 0;
 }
