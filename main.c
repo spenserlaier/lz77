@@ -19,10 +19,12 @@ typedef struct {
 } lz77;
 
 lz77 * encode_lz77(char* input_string, int search_buff_size) {
+    printf("Beginning encoding\n");
     unsigned long input_length = strlen(input_string);
     if (input_length < 2*search_buff_size) {
         return NULL;
     }
+    //TODO: error catching on malloc
     char * output_string = malloc(sizeof(char) * input_length * 3);
     int output_string_idx = 0;
     int search_buff_left = 0;
@@ -39,9 +41,14 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         output_string[output_string_idx++] = 0;
         output_string[output_string_idx++] = input_string[idx];
     }
-    while (look_ahead_buff_right < input_length) {
+    //while (look_ahead_buff_right < input_length) {
+    while (look_ahead_buff_left < input_length) {
+
         //iterate through the  search buffer looking for the longest match starting
         //at current character in lookahead buffer
+        //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
+        printf("look_ahead_left: %d input_length: %lu\n", look_ahead_buff_left, input_length);
+        //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
         for (int idx = search_buff_left; idx < search_buff_right; idx ++) {
             int current_match_length = 0;
             int match_idx_left = idx;
@@ -73,9 +80,11 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
     lz77 * output = malloc(sizeof(lz77));
     output->length = output_string_idx;
     output->string = output_string;
+    printf("Encoding successful.\n");
     return output;
 }
 char * decode_lz77(lz77 * encoded_input) {
+    printf("Beginning decoding\n");
     //scan through the match length values of the output and add them together
     //to determine the decoded output. in cases where match length is 0, add 1
     int decoded_size = 0;
@@ -85,26 +94,31 @@ char * decode_lz77(lz77 * encoded_input) {
         decoded_size += match_size;
         idx += 3;
     }
-    char * decoded = malloc(sizeof(char)*decoded_size);
+    char * decoded = malloc(sizeof(char)*(decoded_size + 1));
     int decoded_idx = 0;
     for (int i = 0; i< encoded_input->length; i += 3) {
         char backwards_offset = encoded_input->string[i];
         char match_length = encoded_input->string[i+1];
         char character = encoded_input->string[i+2];
         if (match_length != 0) {
-            for (int j = i - backwards_offset; j < i + match_length; j ++ ) {
+            int backwards_index = decoded_idx - backwards_offset;
+            for (int j = backwards_index; j <  backwards_index + match_length; j ++ ) {
                 decoded[decoded_idx++] = decoded[j];
             }
         } else {
             decoded[decoded_idx++] = character;
         }
     }
+    printf("Decoding finished with index positioned at: %d\n", decoded_idx );
+    decoded[decoded_idx++] = '\0';
+    printf("Decoding successful\n");
     return decoded;
 }
 int run_test(char * test_string) {
     lz77 * encoded = encode_lz77(test_string, DEFAULT_BUFF_SIZE);
     char * decoded = decode_lz77(encoded);
     int cmp_result = strcmp(decoded, test_string);
+    printf("length of input: %lu length of output: %lu\n", strlen(test_string), strlen(decoded));
     return cmp_result;
 }
 char * generate_uniform_string(char character, int length) {
@@ -118,6 +132,6 @@ char * generate_uniform_string(char character, int length) {
 
 int main() {
     char * uniform_a = generate_uniform_string('a', 500);
-    printf("Result of testing 500 uniform a's: %d", run_test(uniform_a));
+    printf("Result of testing 500 uniform a's: %d\n", run_test(uniform_a));
     return 0;
 }
