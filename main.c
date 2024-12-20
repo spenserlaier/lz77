@@ -43,7 +43,6 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
     }
     //while (look_ahead_buff_right < input_length) {
     while (look_ahead_buff_left < input_length) {
-
         //iterate through the  search buffer looking for the longest match starting
         //at current character in lookahead buffer
         //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
@@ -54,7 +53,7 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
             int match_idx_left = idx;
             int match_idx_right = search_buff_right;
             while (input_string[match_idx_left] == input_string[match_idx_right]
-                    && match_idx_left < search_buff_right)
+                    && match_idx_left <= search_buff_right)
             {
                 match_idx_left ++;
                 match_idx_right ++;
@@ -114,6 +113,7 @@ char * decode_lz77(lz77 * encoded_input) {
             if (character == '\0') {
                 printf("direct character assignment trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
             }
+            printf("performing direct character assignment at index %d\n", decoded_idx);
             decoded[decoded_idx++] = character;
         }
     }
@@ -127,6 +127,8 @@ int run_test(char * test_string) {
     char * decoded = decode_lz77(encoded);
     int cmp_result = strcmp(decoded, test_string);
     printf("length of input: %lu length of output: %lu\n", strlen(test_string), strlen(decoded));
+    //printf("original string: %s\n", test_string);
+    //printf("decoded string: %s\n", decoded);
     return cmp_result;
 }
 char * generate_uniform_string(char character, int length) {
