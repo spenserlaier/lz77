@@ -7,6 +7,7 @@ typedef struct {
     int length;
     char character;
 } lz77_triplet;
+const int DEFAULT_BUFF_SIZE = 50;
 
 int max(int n1, int n2) {
     return n1 > n2? n1 : n2;
@@ -15,9 +16,9 @@ int max(int n1, int n2) {
 typedef struct {
     char * string;
     int length;
-} lz77_output;
+} lz77;
 
-lz77_output * encode_lz77(char* input_string, int search_buff_size) {
+lz77 * encode_lz77(char* input_string, int search_buff_size) {
     unsigned long input_length = strlen(input_string);
     if (input_length < 2*search_buff_size) {
         return NULL;
@@ -69,12 +70,12 @@ lz77_output * encode_lz77(char* input_string, int search_buff_size) {
     }
     //TODO: setting a char to 0 is equivalent to setting it to null terminator \0, which
     //creates issues when searching for the end of a string
-    lz77_output * output = malloc(sizeof(lz77_output));
+    lz77 * output = malloc(sizeof(lz77));
     output->length = output_string_idx;
     output->string = output_string;
     return output;
 }
-char * decode_lz77(lz77_output * encoded_input) {
+char * decode_lz77(lz77 * encoded_input) {
     //scan through the match length values of the output and add them together
     //to determine the decoded output. in cases where match length is 0, add 1
     int decoded_size = 0;
@@ -100,7 +101,23 @@ char * decode_lz77(lz77_output * encoded_input) {
     }
     return decoded;
 }
+int run_test(char * test_string) {
+    lz77 * encoded = encode_lz77(test_string, DEFAULT_BUFF_SIZE);
+    char * decoded = decode_lz77(encoded);
+    int cmp_result = strcmp(decoded, test_string);
+    return cmp_result;
+}
+char * generate_uniform_string(char character, int length) {
+    char * output = malloc(sizeof(char) * length);
+    for (int i = 0; i < length; i++ ) {
+        output[i] = character;
+    }
+    output[length-1] = '\0';
+    return output;
+}
 
 int main() {
+    char * uniform_a = generate_uniform_string('a', 500);
+    printf("Result of testing 500 uniform a's: %d", run_test(uniform_a));
     return 0;
 }
