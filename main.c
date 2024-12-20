@@ -8,6 +8,7 @@ typedef struct {
     char character;
 } lz77_triplet;
 const int DEFAULT_BUFF_SIZE = 50;
+const int DEBUG_MODE = 0; // set to 1 for additional logging
 
 int max(int n1, int n2) {
     return n1 > n2? n1 : n2;
@@ -19,7 +20,9 @@ typedef struct {
 } lz77;
 
 lz77 * encode_lz77(char* input_string, int search_buff_size) {
-    printf("Beginning encoding\n");
+    if (DEBUG_MODE) {
+        printf("Beginning encoding\n");
+    }
     unsigned long input_length = strlen(input_string);
     if (input_length < 2*search_buff_size) {
         return NULL;
@@ -43,9 +46,9 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
     while (look_ahead_buff_left < input_length) {
         //iterate through the  search buffer looking for the longest match starting
         //at current character in lookahead buffer
-        //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
-        //printf("look_ahead_left: %d input_length: %lu\n", look_ahead_buff_left, input_length);
-        //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
+        if (DEBUG_MODE) {
+            printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
+        }
         int longest_match_length = 0;
         int longest_match_backwards_offset = 0;
         for (int idx = search_buff_left; idx <= search_buff_right; idx ++) {
@@ -68,7 +71,9 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
             }
         }
         // if we have a match, output a triplet and shift the buffers right by the size of the match
-        printf("longest match length found at look_ahead_left %d : %d\n", look_ahead_buff_left, longest_match_length);
+        if (DEBUG_MODE) {
+            printf("longest match length found at look_ahead_left %d : %d\n", look_ahead_buff_left, longest_match_length);
+        }
         output_string[output_string_idx++] = longest_match_backwards_offset;
         output_string[output_string_idx++] = longest_match_length;
         output_string[output_string_idx++] = input_string[look_ahead_buff_left];
@@ -78,10 +83,12 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         look_ahead_buff_left += skip_size;
         search_buff_left += skip_size;
         search_buff_right += skip_size;
-        if (look_ahead_buff_left > input_length) {
-            //TODO: we're matching against an extra character at the end it seems.
-            printf("jumped buffer ahead to %d, from prior position %d, original input length: %lu\n", look_ahead_buff_left, look_ahead_buff_left - skip_size, input_length);
-            printf("longest match was %d\n", longest_match_length);
+        if (DEBUG_MODE) {
+            if (look_ahead_buff_left > input_length) {
+                //TODO: we're matching against an extra character at the end it seems.
+                printf("jumped buffer ahead to %d, from prior position %d, original input length: %lu\n", look_ahead_buff_left, look_ahead_buff_left - skip_size, input_length);
+                printf("longest match was %d\n", longest_match_length);
+            }
         }
     }
     //TODO: setting a char to 0 is equivalent to setting it to null terminator \0, which
@@ -89,11 +96,15 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
     lz77 * output = malloc(sizeof(lz77));
     output->length = output_string_idx;
     output->string = output_string;
-    printf("Encoding finished with output length at %d.\n", output_string_idx);
+    if (DEBUG_MODE) {
+        printf("Encoding finished with output length at %d.\n", output_string_idx);
+    }
     return output;
 }
 char * decode_lz77(lz77 * encoded_input) {
-    printf("Beginning decoding\n");
+    if (DEBUG_MODE) {
+        printf("Beginning decoding\n");
+    }
     //scan through the match length values of the output and add them together
     //to determine the decoded output. in cases where match length is 0, add 1
     int decoded_size = 0;
@@ -109,41 +120,56 @@ char * decode_lz77(lz77 * encoded_input) {
         char backwards_offset = encoded_input->string[i];
         char match_length = encoded_input->string[i+1];
         char character = encoded_input->string[i+2];
-        if (match_length != 50 && match_length != 0 ) {
-            printf("special match length %d found at index %d\n", match_length, decoded_idx);
+        if (DEBUG_MODE) {
+            if (match_length != DEFAULT_BUFF_SIZE && match_length != 0 ) {
+                printf("special match length %d found at index %d\n", match_length, decoded_idx);
 
+            }
         }
         if (match_length != 0) {
             int backwards_index = decoded_idx - backwards_offset;
             for (int j = backwards_index; j < backwards_index + match_length; j ++ ) {
-                if (decoded[j] == '\0') {
-                    printf("trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
-                    printf("decoded index: %d, backwards index: %d initial backwards\n", decoded_idx, j);
+                if (DEBUG_MODE) {
+
+                    if (decoded[j] == '\0') {
+                        printf("trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
+                        printf("decoded index: %d, backwards index: %d initial backwards\n", decoded_idx, j);
+                    }
                 }
                 decoded[decoded_idx++] = decoded[j];
             }
         } else {
-            if (character == '\0') {
-                printf("direct character assignment trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
+            if (DEBUG_MODE) {
+
+                if (character == '\0') {
+                    printf("direct character assignment trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
+                }
+                printf("performing direct character assignment at index %d\n", decoded_idx);
             }
-            //printf("performing direct character assignment at index %d\n", decoded_idx);
             decoded[decoded_idx++] = character;
         }
     }
-    // printf("Printing last triplet: \n");
-    // printf("offset: %c\n", encoded_input->string[encoded_input->length-3]);
-    // printf("match length: %d\n",encoded_input->string[encoded_input->length-2]);
-    // printf("character: %c\n",encoded_input->string[encoded_input->length-1]);
-    // printf("Decoding finished with index positioned at: %d\n", decoded_idx );
+    if (DEBUG_MODE) {
+        printf("Printing last triplet: \n");
+        printf("offset: %c\n", encoded_input->string[encoded_input->length-3]);
+        printf("match length: %d\n",encoded_input->string[encoded_input->length-2]);
+        printf("character: %c\n",encoded_input->string[encoded_input->length-1]);
+        printf("Decoding finished with index positioned at: %d\n", decoded_idx );
+    }
     decoded[decoded_idx] = '\0';
-    //printf("Decoding successful\n");
+    if (DEBUG_MODE) {
+
+        printf("Decoding successful\n");
+    }
     return decoded;
 }
 int run_test(char * test_string) {
     lz77 * encoded = encode_lz77(test_string, DEFAULT_BUFF_SIZE);
     char * decoded = decode_lz77(encoded);
     int cmp_result = strcmp(decoded, test_string);
-    printf("length of input: %lu length of output: %lu\n", strlen(test_string), strlen(decoded));
+    if (DEBUG_MODE) {
+        printf("length of input: %lu length of output: %lu\n", strlen(test_string), strlen(decoded));
+    }
     //printf("original string: %s\n", test_string);
     //printf("decoded string: %s\n", decoded);
     return cmp_result;
@@ -168,5 +194,9 @@ int main() {
     printf("Result of testing 505 uniform a's: %d\n", run_test(uniform_a_505));
     char * uniform_a_515 = generate_uniform_string('a', 515);
     printf("Result of testing 515 uniform a's: %d\n", run_test(uniform_a_515));
+    char * uniform_a_515_with_b = generate_uniform_string('a', 515);
+    uniform_a_515_with_b[217] = 'b';
+    uniform_a_515_with_b[234] = 'b';
+    printf("Result of testing 515 uniform a's with some bs: %d\n", run_test(uniform_a_515_with_b));
     return 0;
 }
