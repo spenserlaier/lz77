@@ -28,15 +28,13 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
     char * output_string = malloc(sizeof(char) * input_length * 3);
     int output_string_idx = 0;
     int search_buff_left = 0;
-    int search_buff_right = search_buff_size - 1;
+    int search_buff_right = search_buff_size-1;
     int look_ahead_buff_left = search_buff_right + 1;
     int look_ahead_buff_right = look_ahead_buff_left;
 
-    int longest_match_length = 0;
-    int longest_match_backwards_offset = 0;
     //output first <window size> triplets as we initialize the search buffer.
     // triplet structure: <backwards_offset, match_length, character>
-    for (int idx = 0; idx < search_buff_right; idx ++ ) {
+    for (int idx = 0; idx <= search_buff_right; idx ++ ) {
         output_string[output_string_idx++] = 0;
         output_string[output_string_idx++] = 0;
         output_string[output_string_idx++] = input_string[idx];
@@ -46,14 +44,17 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         //iterate through the  search buffer looking for the longest match starting
         //at current character in lookahead buffer
         //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
-        printf("look_ahead_left: %d input_length: %lu\n", look_ahead_buff_left, input_length);
+        //printf("look_ahead_left: %d input_length: %lu\n", look_ahead_buff_left, input_length);
         //printf("look_ahead_right: %d input_length: %lu\n", look_ahead_buff_right, input_length);
-        for (int idx = search_buff_left; idx < search_buff_right; idx ++) {
+        int longest_match_length = 0;
+        int longest_match_backwards_offset = 0;
+        for (int idx = search_buff_left; idx <= search_buff_right; idx ++) {
             int current_match_length = 0;
             int match_idx_left = idx;
             int match_idx_right = search_buff_right;
             while (input_string[match_idx_left] == input_string[match_idx_right]
-                    && match_idx_left <= search_buff_right)
+                    && match_idx_left <= search_buff_right
+                  )
             {
                 match_idx_left ++;
                 match_idx_right ++;
@@ -74,13 +75,16 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         look_ahead_buff_left += skip_size;
         search_buff_left += skip_size;
         search_buff_right += skip_size;
+        //if (look_ahead_buff_left > input_length) {
+        //printf("jumped buffer ahead to %d, from prior position %d, original input length: %lu\n", look_ahead_buff_left, look_ahead_buff_left - skip_size, input_length);
+        //}
     }
     //TODO: setting a char to 0 is equivalent to setting it to null terminator \0, which
     //creates issues when searching for the end of a string
     lz77 * output = malloc(sizeof(lz77));
     output->length = output_string_idx;
     output->string = output_string;
-    printf("Encoding successful.\n");
+    printf("Encoding finished with output length at %d.\n", output_string_idx);
     return output;
 }
 char * decode_lz77(lz77 * encoded_input) {
@@ -101,7 +105,7 @@ char * decode_lz77(lz77 * encoded_input) {
         char match_length = encoded_input->string[i+1];
         char character = encoded_input->string[i+2];
         if (match_length != 0) {
-            int backwards_index = decoded_idx - backwards_offset + 1;
+            int backwards_index = decoded_idx - backwards_offset;
             for (int j = backwards_index; j <  backwards_index + match_length; j ++ ) {
                 if (decoded[j] == '\0') {
                     printf("trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
@@ -113,13 +117,17 @@ char * decode_lz77(lz77 * encoded_input) {
             if (character == '\0') {
                 printf("direct character assignment trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
             }
-            printf("performing direct character assignment at index %d\n", decoded_idx);
+            //printf("performing direct character assignment at index %d\n", decoded_idx);
             decoded[decoded_idx++] = character;
         }
     }
-    printf("Decoding finished with index positioned at: %d\n", decoded_idx );
+    // printf("Printing last triplet: \n");
+    // printf("offset: %c\n", encoded_input->string[encoded_input->length-3]);
+    // printf("match length: %d\n",encoded_input->string[encoded_input->length-2]);
+    // printf("character: %c\n",encoded_input->string[encoded_input->length-1]);
+    // printf("Decoding finished with index positioned at: %d\n", decoded_idx );
     decoded[decoded_idx++] = '\0';
-    printf("Decoding successful\n");
+    //printf("Decoding successful\n");
     return decoded;
 }
 int run_test(char * test_string) {
@@ -141,8 +149,15 @@ char * generate_uniform_string(char character, int length) {
 }
 
 int main() {
-    char * uniform_a = generate_uniform_string('a', 500);
-    printf("uniform string: %s\n",uniform_a );
-    printf("Result of testing 500 uniform a's: %d\n", run_test(uniform_a));
+    char * uniform_a_500 = generate_uniform_string('a', 500);
+    printf("Result of testing 500 uniform a's: %d\n", run_test(uniform_a_500));
+    char * uniform_a_501 = generate_uniform_string('a', 501);
+    printf("Result of testing 501 uniform a's: %d\n", run_test(uniform_a_501));
+    char * uniform_a_502 = generate_uniform_string('a', 502);
+    printf("Result of testing 502 uniform a's: %d\n", run_test(uniform_a_502));
+    char * uniform_a_505 = generate_uniform_string('a', 505);
+    printf("Result of testing 505 uniform a's: %d\n", run_test(uniform_a_505));
+    char * uniform_a_515 = generate_uniform_string('a', 515);
+    printf("Result of testing 515 uniform a's: %d\n", run_test(uniform_a_515));
     return 0;
 }
