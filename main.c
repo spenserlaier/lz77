@@ -51,9 +51,11 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         for (int idx = search_buff_left; idx <= search_buff_right; idx ++) {
             int current_match_length = 0;
             int match_idx_left = idx;
-            int match_idx_right = search_buff_right;
+            int match_idx_right = look_ahead_buff_left;
             while (input_string[match_idx_left] == input_string[match_idx_right]
                     && match_idx_left <= search_buff_right
+                    && match_idx_right < look_ahead_buff_left + DEFAULT_BUFF_SIZE
+                    && match_idx_right < input_length
                   )
             {
                 match_idx_left ++;
@@ -66,7 +68,7 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
             }
         }
         // if we have a match, output a triplet and shift the buffers right by the size of the match
-        printf("longest match length found: %d\n", longest_match_length);
+        printf("longest match length found at look_ahead_left %d : %d\n", look_ahead_buff_left, longest_match_length);
         output_string[output_string_idx++] = longest_match_backwards_offset;
         output_string[output_string_idx++] = longest_match_length;
         output_string[output_string_idx++] = input_string[look_ahead_buff_left];
@@ -76,9 +78,11 @@ lz77 * encode_lz77(char* input_string, int search_buff_size) {
         look_ahead_buff_left += skip_size;
         search_buff_left += skip_size;
         search_buff_right += skip_size;
-        //if (look_ahead_buff_left > input_length) {
-        //printf("jumped buffer ahead to %d, from prior position %d, original input length: %lu\n", look_ahead_buff_left, look_ahead_buff_left - skip_size, input_length);
-        //}
+        if (look_ahead_buff_left > input_length) {
+            //TODO: we're matching against an extra character at the end it seems.
+            printf("jumped buffer ahead to %d, from prior position %d, original input length: %lu\n", look_ahead_buff_left, look_ahead_buff_left - skip_size, input_length);
+            printf("longest match was %d\n", longest_match_length);
+        }
     }
     //TODO: setting a char to 0 is equivalent to setting it to null terminator \0, which
     //creates issues when searching for the end of a string
@@ -105,9 +109,13 @@ char * decode_lz77(lz77 * encoded_input) {
         char backwards_offset = encoded_input->string[i];
         char match_length = encoded_input->string[i+1];
         char character = encoded_input->string[i+2];
+        if (match_length != 50 && match_length != 0 ) {
+            printf("special match length %d found at index %d\n", match_length, decoded_idx);
+
+        }
         if (match_length != 0) {
             int backwards_index = decoded_idx - backwards_offset;
-            for (int j = backwards_index; j <  backwards_index + match_length; j ++ ) {
+            for (int j = backwards_index; j < backwards_index + match_length; j ++ ) {
                 if (decoded[j] == '\0') {
                     printf("trouble: null terminator found in middle of string, idx : %d\n", decoded_idx);
                     printf("decoded index: %d, backwards index: %d initial backwards\n", decoded_idx, j);
@@ -127,7 +135,7 @@ char * decode_lz77(lz77 * encoded_input) {
     // printf("match length: %d\n",encoded_input->string[encoded_input->length-2]);
     // printf("character: %c\n",encoded_input->string[encoded_input->length-1]);
     // printf("Decoding finished with index positioned at: %d\n", decoded_idx );
-    decoded[decoded_idx++] = '\0';
+    decoded[decoded_idx] = '\0';
     //printf("Decoding successful\n");
     return decoded;
 }
